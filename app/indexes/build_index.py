@@ -1,3 +1,8 @@
+"""
+This program is responsible for building a document store index for property data. 
+It includes functions to load environment variables, preprocess CSV files, convert data to documents, create node representations, and build the document store index using FAISS for vector storage.
+"""
+
 import os
 import pandas as pd
 import faiss
@@ -70,7 +75,7 @@ key_for_search = {
 }
 
 
-def load_env_file(file_path):
+def load_env_file(file_path: str) -> None:
     # Load environment variables from .env file
     variables_to_define = [
         "OPENAI_API_KEY",
@@ -98,18 +103,23 @@ def load_env_file(file_path):
                     if key in variables_to_define:
                         os.environ[key.strip()] = value
                         if key in variables_to_hide:
-                            value = "HIDDEN"
-                        logger.info(f"Set environment variable: {key.strip()}={value}")
+                            logger.info(
+                                f"Set environment variable: {key.strip()}=HIDDEN"
+                            )
+                        else:
+                            logger.info(
+                                f"Set environment variable: {key.strip()}={value}"
+                            )
 
     except FileNotFoundError:
         logger.error(f"Error: {file_path} not found.")
-        raise FileNotFoundError
+        raise FileNotFoundError(f"{file_path} not found.")
     except Exception as e:
         logger.error(f"Error loading {file_path}: {e}")
         raise e
 
 
-def get_models():
+def get_models() -> tuple:
     # Define variables from environment variables
     embeddings_llm = os.getenv("embeddings_llm")
     logger.info(f"embeddings_llm:{embeddings_llm}")
@@ -131,7 +141,7 @@ def get_models():
     return embedding_model, generation_llm
 
 
-def preprocess_csv(file_path):
+def preprocess_csv(file_path: str) -> tuple:
     # Specify data types for problematic columns
     dtype_mapping = {
         32: "str",  # Example: Column 32 as string
@@ -145,18 +155,18 @@ def preprocess_csv(file_path):
     return df, filtered_df
 
 
-def convert_to_documents(df):
+def convert_to_documents(df: pd.DataFrame) -> list:
     return [row.to_dict() for _, row in df.iterrows()]
 
 
-def get_documents_facts(document: dict):
+def get_documents_facts(document: dict) -> str:
     facts = ""
     for key, value in document.items():
         facts += f"{key}: {value}\n"
     return facts
 
 
-def create_node_representation(input_dict):
+def create_node_representation(input_dict: dict) -> dict:
     # Extract relevant fields
     legal_description = input_dict.get("legal description", "N/A")
     owner_id = input_dict.get("owner ID", "N/A")
@@ -198,7 +208,7 @@ def create_node_representation(input_dict):
     return output_node
 
 
-def get_nodes(input_file_path):
+def get_nodes(input_file_path: str) -> tuple:
     df, filtered_df = preprocess_csv(input_file_path)
     documents = convert_to_documents(filtered_df)
     # Limit to 10 for testing
@@ -236,7 +246,7 @@ def get_nodes(input_file_path):
     return full_nodes, owner_nodes, all_nodes
 
 
-def build_docstore_index(owner_nodes, all_nodes):
+def build_docstore_index(owner_nodes: list, all_nodes: list) -> None:
     # define storage context
 
     docstore = SimpleDocumentStore()

@@ -1,15 +1,27 @@
 """
 Gradio app for searching property information.
 
+This script sets up a Gradio interface for querying property information using a 
+pre-built index. It includes functions for running queries, updating search history, 
+and handling user interactions with the UI components.
+
+Functions:
+- run_query(user_input): Executes a query using the QueryEngineSingleton and returns the response.
+- search_function(user_input, history): Handles the search functionality, updates the history, 
+  and returns the result along with updated history and dropdown choices.
+- main(): Initializes and launches the Gradio app with the defined UI components and interactions.
+
+The app is designed to demonstrate a property search application for Collin County zip code 75024.
 """
 
 import gradio as gr
+import traceback
 
 from indexes.index_query import QueryEngineSingleton
 from utilities.custom_logger import logger
 
 
-def run_query(user_input):
+def run_query(user_input: str) -> str:
     """
     For demonstration purposes, we'll just echo the input.
     """
@@ -20,7 +32,7 @@ def run_query(user_input):
     return str(response)
 
 
-def search_function(user_input, history):
+def search_function(user_input: str, history: list) -> tuple:
     """
     Called when "Search" button is clicked or Enter is pressed.
       1) Compute the system output for the new input.
@@ -45,7 +57,7 @@ def search_function(user_input, history):
     return result, history, gr.update(choices=dropdown_choices)
 
 
-def select_history(selected_query, history):
+def select_history(selected_query: str, history: list) -> str:
     """
     Called when the user picks a query from the dropdown.
     We want to:
@@ -63,59 +75,63 @@ def select_history(selected_query, history):
     return ""
 
 
-def main():
+def main() -> None:
     logger.info("Starting Gradio app...")
-    with gr.Blocks() as demo:
-        gr.Markdown("## Property RAG Search - Collin County zip code 75024")
+    try:
+        with gr.Blocks() as demo:
+            gr.Markdown("## Property RAG Search - Collin County zip code 75024")
 
-        # State to store (query, result) pairs
-        history_state = gr.State([])
+            # State to store (query, result) pairs
+            history_state = gr.State([])
 
-        # Load the index
-        _ = QueryEngineSingleton()
+            # Load the index
+            _ = QueryEngineSingleton()
 
-        # We split the UI into two sections (frames/groups)
-        with gr.Row():
-            # Frame 1: "Enter your query" & "System Output"
-            with gr.Group():
-                input_field = gr.Textbox(label="Enter your query")
-                search_button = gr.Button("Search")
-                output_field = gr.Textbox(label="System Output")
+            # We split the UI into two sections (frames/groups)
+            with gr.Row():
+                # Frame 1: "Enter your query" & "System Output"
+                with gr.Group():
+                    input_field = gr.Textbox(label="Enter your query")
+                    search_button = gr.Button("Search")
+                    output_field = gr.Textbox(label="System Output")
 
-            # Frame 2: "History (last 10 queries)" & "History Query"
-            with gr.Group():
-                history_dropdown = gr.Dropdown(
-                    label="History (last 10 queries)", choices=[], interactive=True
-                )
-                history_input_field = gr.Textbox(
-                    label="History Query", interactive=False
-                )
+                # Frame 2: "History (last 10 queries)" & "History Query"
+                with gr.Group():
+                    history_dropdown = gr.Dropdown(
+                        label="History (last 10 queries)", choices=[], interactive=True
+                    )
+                    history_input_field = gr.Textbox(
+                        label="History Query", interactive=False
+                    )
 
-        # 1) SEARCH BUTTON:
-        #    When clicked, run search_function
-        search_button.click(
-            fn=search_function,
-            inputs=[input_field, history_state],
-            outputs=[output_field, history_state, history_dropdown],
-        )
+            # 1) SEARCH BUTTON:
+            #    When clicked, run search_function
+            search_button.click(
+                fn=search_function,
+                inputs=[input_field, history_state],
+                outputs=[output_field, history_state, history_dropdown],
+            )
 
-        # 2) TRIGGER SEARCH WHEN "ENTER" IS PRESSED INSIDE input_field
-        input_field.submit(
-            fn=search_function,
-            inputs=[input_field, history_state],
-            outputs=[output_field, history_state, history_dropdown],
-        )
+            # 2) TRIGGER SEARCH WHEN "ENTER" IS PRESSED INSIDE input_field
+            input_field.submit(
+                fn=search_function,
+                inputs=[input_field, history_state],
+                outputs=[output_field, history_state, history_dropdown],
+            )
 
-        # 3) HISTORY SELECTION:
-        #    When the user picks a past query, ONLY update 'History Query' field.
-        #    The 'System Output' remains unchanged.
-        history_dropdown.change(
-            fn=select_history,
-            inputs=[history_dropdown, history_state],
-            outputs=history_input_field,
-        )
+            # 3) HISTORY SELECTION:
+            #    When the user picks a past query, ONLY update 'History Query' field.
+            #    The 'System Output' remains unchanged.
+            history_dropdown.change(
+                fn=select_history,
+                inputs=[history_dropdown, history_state],
+                outputs=history_input_field,
+            )
 
-    demo.launch(share=False, show_api=False)
+        demo.launch(share=False, show_api=False)
+    except Exception as e:
+        traceback.print_exc()
+        logger.error(f"Error running Gradio app: {e}")
 
 
 if __name__ == "__main__":
