@@ -7,3 +7,6 @@ llama-index-readers-file==0.4.1
 pymupdf
 matplotlib==3.10.0
 gradio==5.9.1
+llama-index-vector-stores-faiss==0.3.0
+faiss-cpu==1.9.0.post1
+python-dotenv==1.0.1

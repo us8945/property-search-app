@@ -1,21 +1,16 @@
-import pandas as pd
-from llama_index.core import Document, ServiceContext
-from llama_index.core import (
-    VectorStoreIndex,
-    SimpleDirectoryReader,
-    get_response_synthesizer,
-    Settings,
-)
-from llama_index.llms.openai import OpenAI
 import os
-from llama_index.core.retrievers import VectorIndexRetriever
-from llama_index.core.query_engine import RetrieverQueryEngine
-from llama_index.core.schema import TextNode, NodeRelationship, RelatedNodeInfo
+import pandas as pd
+import faiss
 
+from llama_index.vector_stores.faiss import FaissVectorStore
+from llama_index.core import VectorStoreIndex
+from llama_index.llms.openai import OpenAI
+from llama_index.core.schema import TextNode, NodeRelationship, RelatedNodeInfo
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.storage.docstore import SimpleDocumentStore
 from llama_index.core import StorageContext
-from llama_index.core.node_parser import get_leaf_nodes, get_root_nodes
+
+from utilities.custom_logger import logger
 
 # Mapping columns for preprocessing
 key_replacements = {
@@ -84,6 +79,10 @@ def load_env_file(file_path):
         "data_path",
         "property_file",
         "persist_dir",
+        "vector_dim",
+    ]
+    variables_to_hide = [
+        "OPENAI_API_KEY",
     ]
     try:
         with open(file_path, "r") as file:
@@ -98,18 +97,22 @@ def load_env_file(file_path):
                     # Set the environment variable
                     if key in variables_to_define:
                         os.environ[key.strip()] = value
-                        print(f"Set environment variable: {key.strip()}={value}")
+                        if key in variables_to_hide:
+                            value = "HIDDEN"
+                        logger.info(f"Set environment variable: {key.strip()}={value}")
 
     except FileNotFoundError:
-        print(f"Error: {file_path} not found.")
+        logger.error(f"Error: {file_path} not found.")
+        raise FileNotFoundError
     except Exception as e:
-        print(f"Error loading {file_path}: {e}")
+        logger.error(f"Error loading {file_path}: {e}")
+        raise e
 
 
 def get_models():
     # Define variables from environment variables
     embeddings_llm = os.getenv("embeddings_llm")
-    print(f"embeddings_llm:{embeddings_llm}")
+    logger.info(f"embeddings_llm:{embeddings_llm}")
     embeddings_cache_folder = os.getenv("embeddings_cache_folder")
     openai_api_key = os.getenv("OPENAI_API_KEY")
     # Embedding model
@@ -129,7 +132,14 @@ def get_models():
 
 
 def preprocess_csv(file_path):
-    df = pd.read_csv(file_path)
+    # Specify data types for problematic columns
+    dtype_mapping = {
+        32: "str",  # Example: Column 32 as string
+        49: "str",  # Example: Column 49 as string
+    }
+
+    df = pd.read_csv(file_path, dtype=dtype_mapping)
+    # df = pd.read_csv(file_path)
     df.rename(columns=key_replacements, inplace=True)
     filtered_df = df[list(key_for_search.values())]
     return df, filtered_df
@@ -234,8 +244,16 @@ def build_docstore_index(owner_nodes, all_nodes):
     # insert nodes into docstore
     docstore.add_documents(all_nodes)
 
+    # Define Index and Vector Store
+    vector_dim = int(os.getenv("vector_dim"))
+    logger.info(f"Loaded vector dimension from env: {vector_dim}")
+    faiss_index = faiss.IndexFlatL2(vector_dim)
+    vector_store = FaissVectorStore(faiss_index=faiss_index)
+
     # define storage context (will include vector store by default too)
-    storage_context = StorageContext.from_defaults(docstore=docstore)
+    storage_context = StorageContext.from_defaults(
+        docstore=docstore, vector_store=vector_store
+    )
 
     # owner_nodes are defined as leaf nodes
     owner_index = VectorStoreIndex(
@@ -245,29 +263,8 @@ def build_docstore_index(owner_nodes, all_nodes):
         insert_batch_size=10000,
         storage_context=storage_context,
     )
-    print("Owner index created")
+    logger.info("Owner index created")
 
     # Persist the storage context
-    # storage_context.persist(persist_dir=os.getenv("persist_dir"))
-    # print("Storage context persisted")
     owner_index.storage_context.persist(persist_dir=os.getenv("persist_dir"))
-    print("Owner index persisted")
-
-
-if __name__ == "__main__":
-    import logging
-    import sys
-
-    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-    logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-    load_env_file("../../../.env")
-    embedding_model, generation_llm = get_models()
-    Settings.embed_model = embedding_model
-    Settings.llm = generation_llm
-    data_path = os.getenv("data_path")
-    property_file = os.getenv("property_file")
-    property_file_path = os.path.join(data_path, property_file)
-    full_nodes, owner_nodes, all_nodes = get_nodes(property_file_path)
-    build_docstore_index(owner_nodes=owner_nodes, all_nodes=all_nodes)
-    print("Index built")
-    print("Done")
+    logger.info("Owner index persisted")

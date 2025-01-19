@@ -1,14 +1,22 @@
+"""
+Gradio app for searching property information.
+
+"""
+
 import gradio as gr
 
 from indexes.index_query import QueryEngineSingleton
+from utilities.custom_logger import logger
 
 
-def demo_function(user_input):
+def run_query(user_input):
     """
     For demonstration purposes, we'll just echo the input.
     """
     query_engine_instance = QueryEngineSingleton()
+    logger.debug(f"Query: {user_input}")
     response = query_engine_instance.query(user_input)
+    logger.debug(f"Response: {response}")
     return str(response)
 
 
@@ -22,7 +30,7 @@ def search_function(user_input, history):
          - The updated history
          - The updated dropdown choices
     """
-    result = demo_function(user_input)
+    result = run_query(user_input)
 
     # If already at 10 items, remove the oldest
     if len(history) >= 10:
@@ -56,6 +64,7 @@ def select_history(selected_query, history):
 
 
 def main():
+    logger.info("Starting Gradio app...")
     with gr.Blocks() as demo:
         gr.Markdown("## Property RAG Search - Collin County zip code 75024")
 
@@ -106,7 +115,7 @@ def main():
             outputs=history_input_field,
         )
 
-        demo.launch(share=True)
+    demo.launch(share=False, show_api=False)
 
 
 if __name__ == "__main__":
