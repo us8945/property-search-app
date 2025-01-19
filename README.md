@@ -57,14 +57,9 @@ Example query and history query screenshot:
 ![App_screen_shot_1](./images/App_screen_shot_1.jpg)
 
 ## Index Creation
-The App is using basic LlamaIndex functionality to create and persist Embeddings Index and Document store.
-The App supports running local HuggingFac embedding models or using OpenAI embedding model. 
+The App is using FAISS Index using Embeddings calculated by HuggingFace model running locally. The Document store is LlamaInde DocStore.
+The App supports running local HuggingFace embedding models or using OpenAI embedding model. 
 
-## Create Index Job
-To create the index, you can run the "create index" job using the following command:
-```sh
-python app/indexes/build_index.py
-```
 
 ## Notebooks
 
