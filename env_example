@@ -4,6 +4,7 @@ OPENAI_API_KEY=openai-api-key
 # Embedding models params
 embeddings_llm="BAAI/bge-large-en-v1.5"
 embeddings_cache_folder="full_path/huggingface/cache/llama_index/embeddings"
+vector_dim=1024
 
 # Data params
 property_file="Collin_CAD_Appraisal_Data_2024_20241208_75024.csv"

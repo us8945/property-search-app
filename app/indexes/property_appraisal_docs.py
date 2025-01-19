@@ -56,9 +56,3 @@ def read_csv_and_generate_items(file_path):
             }
             items.append([text_string, remapped_dict])
     return items
-
-
-# Example usage:
-# file_path = 'path_to_your_csv_file.csv'
-# items = read_csv_and_generate_items(file_path)
-# print(items)

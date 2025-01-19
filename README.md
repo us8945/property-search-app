@@ -34,7 +34,7 @@ The App is using basic LlamaIndex functionality to create and persist Embeddings
 2. Index Creation
    The App is using basic LlamaIndex functionality to create and persist Embeddings Index and Document store.
     ```sh
-    python app/indexes/build_index.py
+    python app/run_build_indexes.py
     ```
 
 
@@ -43,6 +43,11 @@ The App is using basic LlamaIndex functionality to create and persist Embeddings
     python app/run_app.py
     ```
 
+
+4. Run Query Test from command line"
+    ```sh
+    python app/run_query_test.py
+    ``` 
 
 
 The application will run at the [following URL](http://127.0.0.1:7860) . Public URL will be provided by Gradio, valid for 72 hours, the URL will be displayed once App has started.
@@ -83,8 +88,3 @@ This project uses the following libraries and resources:
 - [LlamaIndex](https://github.com/jerryjliu/llama_index)
 - [OpenAI](https://openai.com/)
 - [Collin County Property Data](https://taxpublic.collincountytx.gov/search)
-
-
-
-
-

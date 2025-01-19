@@ -1,4 +1,5 @@
 import os
+from llama_index.vector_stores.faiss import FaissVectorStore
 from llama_index.core import get_response_synthesizer
 from llama_index.core import (
     StorageContext,
@@ -9,6 +10,8 @@ from llama_index.core.retrievers import AutoMergingRetriever
 from llama_index.core.query_engine import RetrieverQueryEngine
 
 from .build_index import load_env_file, get_models
+
+from utilities.custom_logger import logger
 
 
 class QueryEngineSingleton:
@@ -23,6 +26,7 @@ class QueryEngineSingleton:
 
     def __init__(self):
         if self._index is None and self._query_engine is None:
+            logger.info("Initializing QueryEngineSingleton")
             self._initialize()
 
     def _initialize(self):
@@ -31,12 +35,22 @@ class QueryEngineSingleton:
         embedding_model, generation_llm = get_models()
         Settings.embed_model = embedding_model
         Settings.llm = generation_llm
+        persist_dir = os.environ["persist_dir"]
 
         # Load index
-        print("Creating storage context from", os.environ["persist_dir"])
+        logger.info(f"Creating storage context from : {os.environ['persist_dir']}")
+
+        # Define Index and Vector Store
+        vector_store = FaissVectorStore.from_persist_dir(persist_dir)
+
+        # Define storage context
         storage_context = StorageContext.from_defaults(
-            persist_dir=os.environ["persist_dir"]
+            vector_store=vector_store, persist_dir=persist_dir
         )
+
+        # storage_context = StorageContext.from_defaults(
+        #    persist_dir=os.environ["persist_dir"]
+        # )
         owner_index = load_index_from_storage(storage_context=storage_context)
 
         # Initialize query engine
@@ -62,29 +76,3 @@ class QueryEngineSingleton:
         if self._query_engine is None:
             raise RuntimeError("Query engine is not initialized.")
         return self._query_engine.query(query_text)
-
-
-def main():
-    import logging
-    import sys
-
-    # logging.basicConfig(stream=sys.stdout, level=logging.INFO)
-    # logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
-    # Test singleton query engine
-    query_engine_instance = QueryEngineSingleton()
-    query_list = [
-        ("What properties are owned by 'Smith'"),
-        ("What properties are owned by 'Smeeth'"),
-        ("What properties are owned by 'Smithes'"),
-    ]
-
-    for query_str in query_list:
-        response = query_engine_instance.query(query_str)
-        print(f"Query: {query_str}")
-        print(str(response))
-        print("*" * 50)
-
-
-if __name__ == "__main__":
-    main()
